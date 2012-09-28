@@ -28,6 +28,35 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 **************************************************************************/
 
+function save_file($file, $db_tmp_path, $dbupf)
+{
+	
+	// Rename uploaded file to reflect original name
+	if ($file['error'] !== UPLOAD_ERR_OK)
+	    throw new Exception(__('File was not uploaded from your computer.',wpdbUploadForm));
+	
+		if (!file_exists($db_tmp_path))
+		{
+	if (!mkdir($db_tmp_path))
+	    throw new Exception(__('Cannot create temporary directory!',wpdbUploadForm));
+		}
+	if ($file['name'] === "")
+	    throw new Exception(__('File name not supplied by the browser.',wpdbUploadForm));
+	
+		$new_file_name = explode(".",$file['name']);
+	
+	    $tmpFile = $db_tmp_path.'/'.str_replace("/\0", '_', $new_file_name[0]) . "_" . date("Y-m-d").".".str_replace("/\0", '_', $new_file_name[1]);
+	if (!move_uploaded_file($file['tmp_name'], $tmpFile))
+		throw new Exception(__('Cannot rename uploaded file!',wpdbUploadForm));
+	
+	// Upload
+		$return = $dbupf->putFile($tmpFile);
+			if ( !$return ) {
+			throw new Exception(__('ERROR!',wpdbUploadForm));
+			}
+
+}
+
 function show_dropbox()
 {	
 	$db_user = get_option( 'db_username' );
@@ -38,8 +67,6 @@ function show_dropbox()
 	$db_key = get_option( 'db_key' );
 	$db_secret = get_option( 'db_secret' );
 
-	$db_token = get_option( 'db_auth_token' );
-	$db_token_secret = get_option( 'db_auth_token_secret' );
 
 	echo '<link type="text/css" rel="stylesheet" href="' . get_bloginfo('wpurl') . '/wp-content/plugins/wp-dropbox/css/wp-db-style.css" />' . "\n";
 
@@ -47,9 +74,6 @@ function show_dropbox()
 
 	$showform = True;
 	try {
-		if (($db_token == '') or ($db_secret == '') or ($db_token == '') or ($db_token_secret == '') )
-			throw new Exception(__('Need to configure plugin!'));
-
 		if ($db_allow_ext == '')
 			throw new Exception(__('Need to configure allowed file extensions!'));
 
@@ -61,10 +85,8 @@ function show_dropbox()
 	if ($_POST['email']) {
 
 	    try {
-			include 'inc/dropbox.php';
-   			$dbupf = new Dropbox($db_key,$db_secret);
-			$dbupf->setOAuthToken($db_token);
-			$dbupf->setOAuthTokenSecret($db_token_secret);
+			require_once('dropbox.php');
+			$dropbox = make_dropbox_api($db_key, $db_secret);
 
 		} catch(Exception $e) {
 			echo '<span id="syntax_error">'.__('Error:'). ' ' . htmlspecialchars($e->getMessage()) . '</span>';
@@ -74,8 +96,8 @@ function show_dropbox()
 	try {
 	$allowedExtensions = split("[ ]+", $db_allow_ext);
 
-	  foreach ($_FILES as $file) { 
-	    if ($file['tmp_name'] > '') { 
+	  foreach ($_FILES as $file) {
+	    if ($file['tmp_name'] > '') {
 	      if (!in_array(end(explode(".", 
 	            strtolower($file['name']))), 
 	            $allowedExtensions)) { 
@@ -85,33 +107,12 @@ function show_dropbox()
 	        __('&lt;= Go back',wpdbUploadForm).'</a></p>'); 
 	      } 
 	    } 
-	  } 
-
-	        // Rename uploaded file to reflect original name
-	        if ($_FILES['file']['error'] !== UPLOAD_ERR_OK)
-	            throw new Exception(__('File was not uploaded from your computer.',wpdbUploadForm));
-
-			if (!file_exists($db_tmp_path))
-			{
-	        if (!mkdir($db_tmp_path))
-	            throw new Exception(__('Cannot create temporary directory!',wpdbUploadForm));
-			}
-	        if ($_FILES['file']['name'] === "")
-	            throw new Exception(__('File name not supplied by the browser.',wpdbUploadForm));
-
-			$new_file_name = explode(".",$file['name']);
-
-		    $tmpFile = $db_tmp_path.'/'.str_replace("/\0", '_', $new_file_name[0]) . "_" . date("Y-m-d").".".str_replace("/\0", '_', $new_file_name[1]);
-	    	if (!move_uploaded_file($_FILES['file']['tmp_name'], $tmpFile))
-	        	throw new Exception(__('Cannot rename uploaded file!',wpdbUploadForm));
-
-	       	// Upload
-			$return = $dbupf->filesPost($dp_path, $tmpFile);
-				if ( !$return ) {
-		        	throw new Exception(__('ERROR!',wpdbUploadForm));
-				}
-
-	        echo '<span id="sucess">'.__('Your file is uploaded',wpdbUploadForm).'</span>';
+	  }
+	  
+	  foreach ($_FILES as $file) {
+		save_file($file, $db_tmp_path, $dropbox);
+	  }
+	        echo '<span id="sucess">'.__('Your files are uploaded',wpdbUploadForm).'</span>';
 	    	$showform = False;
 			$delete_file = True;
 
@@ -136,7 +137,11 @@ function show_dropbox()
 	        <form method="POST" enctype="multipart/form-data">
 	            <input type="hidden" name="email" value="1"/>
 				
-				<input class="input_form" size="34" type="file" name="file" />
+				<input class="input_form" size="34" type="file" name="file1" />
+				<input class="input_form" size="34" type="file" name="file2" />
+				<input class="input_form" size="34" type="file" name="file3" />
+				<input class="input_form" size="34" type="file" name="file4" />
+				<input class="input_form" size="34" type="file" name="file5" />
 	        	<input type="submit" value="<?php _e('Submit',wpdbUploadForm); ?>" />
 			</form>
 		<?php }
@@ -148,47 +153,7 @@ function show_dropbox()
 	<div class="wrap">
 		<h2>Wordpress Drobox Upload Form</h2>
 		<p>Make and use a special folder on your Dropbox if you allow public uploads. The date when the file got uploded is appended at the end of the filename, example foo_2010-01-01.pdf just so we don't overwrite files.</p>
-<?php
-		if( $_POST[ "wp_db_submit_hidden" ] == 'Y' ) {
-				// Check if we should ask Dropbox api for a token for the given user
-				if ( trim($_POST[ 'wp_db_password' ]) != '') {
-					$updateAuth = True;
-				}
-				$db_error = False;
-				
-				if ( $updateAuth ) {
-					include 'inc/dropbox.php';
-					$dbupf = new Dropbox($_POST[ 'dbapikey' ],$_POST[ 'dbapisecret' ]);
-					$dbapistuff = $dbupf->token($_POST[ 'wp_db_username' ], $_POST[ 'wp_db_password' ]);
-
-					if ( empty( $dbapistuff["error"] ) ) {
-						update_option( 'db_auth_token', $dbapistuff["token"] );
-	        			update_option( 'db_auth_token_secret', $dbapistuff["secret"] );
-					}
-					else {
-						?>
-							<div class="updated"><p><strong><?php echo $dbapistuff["error"]; ?></strong></p></div>							
-						<?php
-						$db_error = True;
-					}
-				}
-				
-		        // Save the posted value in the database
-		        update_option( 'db_username', $_POST[ 'wp_db_username' ] );
-		        update_option( 'db_path', $_POST[ 'db_path' ] );
-		        update_option( 'db_temp_path', $_POST[ 'db_temp_path' ] );
-		        update_option( 'db_allow_ext', $_POST[ 'db_allow_ext' ] );
-		        update_option( 'db_key', $_POST[ 'dbapikey' ] );
-        		update_option( 'db_secret', $_POST[ 'dbapisecre' ] );
-		        // Put an options updated message on the screen
-		if (!$db_error) {
-		?>
-			<div class="updated"><p><strong><?php _e('Options saved. Dropbox connection is okay, no need to update your password again.', 'mt_trans_domain' ); ?></strong></p></div>
-		<?php
-		}
-		    }
-?>
-	        <form name="wp_db_form" method="POST" action="">
+	        <form name="wp_db_form" method="POST" action="<?php echo plugins_url("wp-dropbox-music/auth.php"); ?>">
 				<input type="hidden" name="wp_db_submit_hidden" value="Y">	
 <table class="form-table">
 				<tr>
@@ -229,7 +194,7 @@ function show_dropbox()
 				</tr>
 				<tr>
 					<th scope="row"><p>Dropbox API Secret.</p></th>
-    				<td><input type="text" size="60" name="dbapisecre" value="<?php echo get_option( 'db_secret' ); ?>" />
+    				<td><input type="text" size="60" name="dbapisecret" value="<?php echo get_option( 'db_secret' ); ?>" />
 						<label for="inputid">https://www.dropbox.com/developers/apps</label>
 					</td>
 				</tr>				
