@@ -1,0 +1,11 @@
+.wp-dropbox {
+	display: inline;
+}
+
+#sucess {
+	color:green;
+}
+
+#error {
+	color:red;
+}
