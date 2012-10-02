@@ -54,6 +54,7 @@ function save_file($file, $db_tmp_path, $dbupf)
 			if ( !$return ) {
 			throw new Exception(__('ERROR!',wpdbUploadForm));
 			}
+	return $return;
 
 }
 
@@ -61,14 +62,14 @@ function show_dropbox()
 {	
 	$db_user = get_option( 'db_username' );
 	$db_pass = get_option( 'db_password' );
-	$dp_path = get_option( 'db_path' );
+	$db_path = get_option( 'db_path' );
 	$db_tmp_path = get_option( 'db_temp_path' );
 	$db_allow_ext = trim( get_option( 'db_allow_ext' ) );
 	$db_key = get_option( 'db_key' );
 	$db_secret = get_option( 'db_secret' );
 
 
-	echo '<link type="text/css" rel="stylesheet" href="' . get_bloginfo('wpurl') . '/wp-content/plugins/wp-dropbox/css/wp-db-style.css" />' . "\n";
+	echo '<link type="text/css" rel="stylesheet" href="' . get_bloginfo('wpurl') . '/wp-content/plugins/wp-dropbox-music/css/wp-db-style.css" />' . "\n";
 
 	echo '<div class="wp-dropbox">';
 
@@ -109,17 +110,39 @@ function show_dropbox()
 	    } 
 	  }
 	  
+	  $results = new ArrayObject();
 	  foreach ($_FILES as $file) {
-		save_file($file, $db_tmp_path, $dropbox);
+		$result = save_file($file, $db_tmp_path, $dropbox);
+		$results->append($result);
 	  }
 	        echo '<span id="sucess">'.__('Your files are uploaded',wpdbUploadForm).'</span>';
 	    	$showform = False;
-			$delete_file = True;
+		$delete_file = True;
 
 	    } catch(Exception $e) {
 	        echo '<span id="syntax_error">'.__('Error:',wpdbUploadForm) . ' ' . htmlspecialchars($e->getMessage()) . '</span>';
 			$delete_file = False;
-	    }		
+	    }
+	    
+	echo "<pre>";
+
+	
+	$message = <<<EOT
+	   Hi,
+	   
+	   Someone uploaded music files to dropbox.
+	   
+	   You can find the files in the $db_path folder in dropbox.
+	   
+	   The files uploaded where named:
+EOT;
+	foreach($results as $result) {
+		$message .= "\t\t" . $result["body"]->path . "\n";
+	}
+	
+	echo "</pre>";
+	$headers = 'From: Webmaster <webmaster@verticalworld.com' . "\r\n";
+	wp_mail($db_username, "Vertical World Music Upload", $message, $headers);
 /*
 	   $attachments = array($tmpFile);
 	   $headers = 'From: My Name <myname@mydomain.com>' . "\r\n\\";
