@@ -22,6 +22,13 @@ function dropbox_music_register_settings() {
                        'dropbox-music-settings', 'dropbox-music-auth');
     add_settings_field('dropbox_music_folder', 'Dropbox Folder', 'dropbox_music_folder_string',
                        'dropbox-music-settings', 'dropbox-music-auth');
+    
+    add_settings_section('dropbox-music-files', 'Dropbox File and Directory Settings',
+                         'dropbox_music_options_files_text', 'dropbox-music-settings');
+    add_settings_field('dropbox_music_storage_directory', 'Temporary File Location', 'dropbox_music_storage_directory_string',
+                       'dropbox-music-settings', 'dropbox-music-files');
+    add_settings_field('dropbox_music_file_extensions', 'Allowed File Extensions', 'dropbox_music_file_extensions_string',
+                       'dropbox-music-settings', 'dropbox-music-files');
 }
 
 function dropbox_music_validate_options($input) {
@@ -32,13 +39,16 @@ function dropbox_music_options_auth_text() { ?>
 <p>This section contains information for authenticating against dropbox.  This is necessary to be able to upload the files to dropbox.</p>
 <?php }
 
+function dropbox_music_options_files_text() { ?>
+<p>This section contains information about allowed file types and directories where to save them.</p>
+<?php }
+
 function dropbox_music_settings_field($id) {
     $options = get_option('dropbox-music-settings');
 ?>
 <input id="dropbox_music_<?php echo $id; ?>" name="dropbox-music-settings[dropbox_music_<?php echo $id; ?>]" type="text"
     style="width: 30em;"
     value="<?php echo $options["dropbox_music_" . $id]; ?>" />
-    <!-- <?php var_dump($options); ?> -->
 <?php
 }
 
@@ -55,6 +65,16 @@ function dropbox_music_apisecret_string()
 function dropbox_music_folder_string()
 {
     dropbox_music_settings_field('folder');
+}
+
+function dropbox_music_storage_directory_string()
+{
+    dropbox_music_settings_field('storage_directory');
+}
+
+function dropbox_music_file_extensions_string()
+{
+    dropbox_music_settings_field('file_extensions');
 }
 
 function dropbox_music_options() {
