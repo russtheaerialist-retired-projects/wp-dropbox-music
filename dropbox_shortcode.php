@@ -19,7 +19,20 @@ function dropbox_music_shortcode($atts) {
     }
 
     $(document).ready(function() {
-        $('#file_upload').hide();
+        var upload_field = $('#file_upload');
+
+        upload_field.uploadify({
+            'swf': '<?php echo $swf_path; ?>',
+            'uploader': '<?php echo $upload_path; ?>',
+            'onUploadStart': append_from_data,
+            'fileTypeDesc': 'MP3 Files',
+            'fileTypeExt': '*.mp3',
+            'uploadLimit': 5,
+            'onSWFReady' : function() {
+                $('#file_upload').uploadify('disable', true);
+            }
+         });
+
         $('.required_field focus').focus();
         $('.required_field').change(function(evt) {
             var result = true;
@@ -28,21 +41,13 @@ function dropbox_music_shortcode($atts) {
                 console.log(ele.val());
                 result &= ele.val() != "";
             });
-            var upload_field = $('#file_upload');
+
             if (result) {
-                upload_field.uploadify({
-                    'swf': '<?php echo $swf_path; ?>',
-                    'uploader': '<?php echo $upload_path; ?>',
-                    'onUploadStart': append_from_data,
-                    'fileTypeDesc': 'MP3 Files',
-                    'fileTypeExt': '*.mp3',
-                    'uploadLimit': 5
-                 });
+                $('#file_upload').uploadify('disable', false);
             } else {
-                upload_field.hide();
+                $('#file_upload').uploadify('disable', true);
             }
         })
-
     });
 </script>
 <p><span class="form_label">Name:</span> <input class="required_field focus" type="text" name="name" id="name" /></p>
