@@ -11,13 +11,13 @@ function dropbox_music_shortcode($atts) {
     function append_from_data() {
         var username = $("#name").val();
         var email = $("#email").val();
-        
+
         $('#file_upload').uploadify('settings', 'formData', {
             'name': username,
             'email': email
         });
     }
-    
+
     $(document).ready(function() {
         $('#file_upload').hide();
         $('.required_field focus').focus();
@@ -26,20 +26,23 @@ function dropbox_music_shortcode($atts) {
             $.each($('.required_field'), function(idx, tag) {
                 var ele = $(tag);
                 console.log(ele.val());
-                result &= ele.val() != ""; 
+                result &= ele.val() != "";
             });
             var upload_field = $('#file_upload');
             if (result) {
                 upload_field.uploadify({
                     'swf': '<?php echo $swf_path; ?>',
                     'uploader': '<?php echo $upload_path; ?>',
-                    'onUploadStart': append_from_data
+                    'onUploadStart': append_from_data,
+                    'fileTypeDesc': 'MP3 Files',
+                    'fileTypeExt': '*.mp3',
+                    'uploadLimit': 5
                  });
             } else {
                 upload_field.hide();
             }
         })
-        
+
     });
 </script>
 <p><span class="form_label">Name:</span> <input class="required_field focus" type="text" name="name" id="name" /></p>
