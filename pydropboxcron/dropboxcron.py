@@ -6,6 +6,8 @@ import sys
 import os
 import os.path as path
 import Queue
+from email.mime.text import MIMEText
+from subprocess import Popen, PIPE
 
 from yaml import load as yamlload
 from yaml import dump as yamlsave
@@ -20,16 +22,22 @@ from dropbox import client, rest, session
 def load_config(args):
     return {
         'sqlalchemy': {
-            'engine': 'mysql+pymysql://root:root@localhost/wordpress',
+            'engine': 'mysql+pymysql://username:password@localhost/wordpress',
         },
         'wordpress': {
-            'root': '/Applications/MAMP/htdocs/wordpress',
+            'root': '', # Put your wordpress root here
             'prefix': 'wp_',
             'option': 'dropbox-music-settings',
         },
         'dropbox': {
             'access_type': 'app_folder',
         },
+        'email': {
+            'sendmail': '/usr/sbin/sendmail',
+            'to': '', # Put your to address here
+            'from': '', # put your from address here
+            'subject': 'Vertical World Music Upload',
+        }
     }
 
 def get_options_from_database(config):
@@ -109,6 +117,15 @@ def upload(dropbox, source, dest):
 def dropbox_path(options, filepath):
     return filepath.split(options['storage_directory'])[-1]
 
+def send_mail(config, from_email, to_email, subject, message):
+    msg = MIMEText(message)
+    msg["From"] = from_email
+    msg["To"] = to_email
+    msg["Subject"] = subject
+
+    proc = Popen([config['email']['sendmail'], '-t'],stdin=PIPE)
+    proc.communicate(msg.as_string())
+
 def main(argv=sys.argv):
     config = load_config(argv)
     options = get_options_from_database(config)
@@ -143,7 +160,11 @@ def main(argv=sys.argv):
             os.remove(entry_file)
             os.rmdir(path.dirname(entry_file))
 
-    print "\n".join(email_message)
+    if len(email_message) > 1:
+        send_mail(config, config['email']['from'],
+                  config['email']['to'],
+                  config['email']['subject'],
+                  "\n".join(email_message))
 
 if __name__ == '__main__':
     main()
